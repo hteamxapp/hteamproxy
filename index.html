@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"/>
+  <title>HTEAM PROXY (với SheetDB)</title>
+  <style>
+    :root {
+      --neon: #28ff28;
+      --bg: #000;
+      --panel: #051005;
+    }
+    body {
+  background: var(--bg);
+  color: var(--neon);
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 24px;
+  text-align: center;   /* thêm dòng này */
+}
+
+h1 {
+  display: inline-block;
+  padding: 12px 18px;
+  border: 2px solid var(--neon);
+  border-radius: 8px;
+  margin: 0 auto;       /* thêm dòng này */
+}
+    .controls {
+      margin-top: 18px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    input, select {
+      padding: 8px;
+      border-radius: 6px;
+      border: 2px solid var(--neon);
+      background: #000;
+      color: #fff;
+      font-size: 16px;
+    }
+    button {
+      padding: 10px 16px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    #scanBtn { background: var(--neon); color: #000; }
+    #checkBtn { background: #00A3FF; color: #fff; }
+    #refreshBtn { background: #fff; color: #000; }
+    #deleteBtn { background: #FF4444; color: #fff; }
+    #copyBtn { background: #FFD700; color: #000; }
+    textarea {
+      width: 100%;
+      height: 260px;
+      margin-top: 18px;
+      padding: 12px;
+      border-radius: 8px;
+      border: 3px solid var(--neon);
+      background: #000;
+      color: #ffb;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    #adminToggle {
+      position: fixed;
+      right: 14px;
+      top: 14px;
+      opacity: 0;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+    }
+    .modal-backdrop {
+      position: fixed;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal {
+      background: linear-gradient(180deg, #052205, #071207);
+      border: 2px solid var(--neon);
+      padding: 18px;
+      border-radius: 12px;
+      min-width: 320px;
+      color: #fff;
+    }
+    .modal h2 { margin-top: 0; }
+    .row {
+      margin: 8px 0;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .small { font-size: 13px; color: #cfc; }
+    .btn-primary {
+      background: var(--neon);
+      color: #000;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+    }
+    .btn-ghost {
+      background: transparent;
+      color: var(--neon);
+      border: 1px solid var(--neon);
+      padding: 8px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .admin-hidden { display: none; }
+  </style>
+</head>
+<body>
+
+  <h1>HTEAM PROXY</h1>
+
+  <!-- Nút ẩn admin -->
+  <button id="adminToggle" title="Admin">⚙️</button>
+
+  <div class="controls">
+    <label>Quantity: <input id="quantity" type="number" value="3" min="1" /></label>
+    <label>Classify:
+      <select id="classify">
+        <option value="any">ANY</option>
+        <option value="http">HTTP</option>
+        <option value="socks4">SOCKS4</option>
+        <option value="socks5">SOCKS5</option>
+      </select>
+    </label>
+    <button id="scanBtn">SCAN</button>
+    <button id="checkBtn">CHECK LIVE</button>
+    <button id="refreshBtn">REFRESH LIST</button>
+    <button id="deleteBtn">DELETE LIST</button>
+    <button id="copyBtn">COPY ALL</button>
+  </div>
+
+  <textarea id="output" readonly placeholder="Proxy list sẽ hiện ở đây..."></textarea>
+
+  <div id="modalBackdrop" class="modal-backdrop">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div id="pwScreen">
+        <h2>Admin login</h2>
+        <div class="row">
+          <input id="adminPassInput" type="password" placeholder="Nhập mật khẩu admin" style="flex:1" />
+          <button id="pwSubmit" class="btn-primary">OK</button>
+        </div>
+        <div class="small">Nhập mật khẩu để truy cập chức năng thêm proxy.</div>
+      </div>
+
+      <div id="adminPanel" class="admin-hidden">
+        <h2>Admin — Add Proxies</h2>
+        <div class="small">Nhập proxy mỗi dòng dạng: <code>type,ip:port</code> hoặc chỉ <code>ip:port</code> (mặc định type sẽ là http)</div>
+        <div class="row" style="flex-direction:column">
+          <textarea id="adminTextarea" placeholder="vd: http,101.2.3.4:80"></textarea>
+        </div>
+        <div class="row" style="justify-content:flex-end">
+          <button id="adminAddBtn" class="btn-primary">Add to Sheet</button>
+          <button id="adminCloseBtn" class="btn-ghost">Close</button>
+        </div>
+        <div id="adminStatus" class="small" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SHEETDB_API = "https://sheetdb.io/api/v1/lagrhwnp19f0s";
+    const ADMIN_PASS = "hteamhmg";
+
+    let proxies = [];
+    let lastPicked = [];
+
+    function showMessage(msg) {
+      const out = document.getElementById('output');
+      out.value = msg + "\n\n" + out.value;
+    }
+
+    async function fetchList() {
+      try {
+        const res = await fetch(SHEETDB_API);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        proxies = data.map(row => ({
+          type: row.type ? row.type.toLowerCase() : "http",
+          addr: row.addr
+        }));
+        showMessage("Đã tải danh sách proxy: " + proxies.length + " dòng.");
+      } catch (err) {
+        showMessage("Lỗi tải danh sách: " + err.message);
+        proxies = [];
+      }
+    }
+
+    function filterByType(list, cls) {
+      if (cls === 'any') return list;
+      return list.filter(p => p.type === cls);
+    }
+
+    function sample(arr, n) {
+      const copy = arr.slice();
+      const out = [];
+      for (let i = 0; i < n && copy.length > 0; i++) {
+        const idx = Math.floor(Math.random() * copy.length);
+        out.push(copy.splice(idx, 1)[0]);
+      }
+      return out;
+    }
+
+    document.getElementById('scanBtn').addEventListener('click', () => {
+      const qty = parseInt(document.getElementById('quantity').value) || 1;
+      const cls = document.getElementById('classify').value;
+      const filtered = filterByType(proxies, cls);
+      if (filtered.length === 0) {
+        showMessage("Không tìm thấy proxy loại " + cls);
+        return;
+      }
+      lastPicked = sample(filtered, qty);
+      const lines = lastPicked.map(p => p.type + "," + p.addr);
+      const out = document.getElementById('output');
+      out.value = lines.join("\n") + "\n\n" + out.value;
+    });
+
+    document.getElementById('checkBtn').addEventListener('click', async () => {
+      if (!lastPicked.length) {
+        alert("Bạn chưa SCAN proxy nào.");
+        return;
+      }
+      const text = lastPicked.map(p => p.addr).join("\n");
+      try {
+        await navigator.clipboard.writeText(text);
+        window.open("https://proxy.mkvn.net/Checkproxy", "_blank");
+        alert("Đã copy proxy vừa scan. Vui lòng dán (Ctrl+V) vào trang Checkproxy.");
+      } catch (e) {
+        alert("Không thể copy tự động. Proxy:\n\n" + text);
+      }
+    });
+
+    document.getElementById('refreshBtn').addEventListener('click', fetchList);
+
+    document.getElementById('deleteBtn').addEventListener('click', () => {
+      document.getElementById('output').value = "";
+      lastPicked = [];
+      showMessage("Đã xoá danh sách proxy trong khung.");
+    });
+
+    document.getElementById('copyBtn').addEventListener('click', async () => {
+      const text = document.getElementById('output').value.trim();
+      if (!text) {
+        alert("Không có gì để copy.");
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        alert("Đã copy toàn bộ danh sách proxy.");
+      } catch (err) {
+        alert("Copy thất bại: " + err.message);
+      }
+    });
+
+    // Admin logic
+    const adminToggle = document.getElementById('adminToggle');
+    const modal = document.getElementById('modalBackdrop');
+    const pwScreen = document.getElementById('pwScreen');
+    const adminPanel = document.getElementById('adminPanel');
+    const adminPassInput = document.getElementById('adminPassInput');
+    const pwSubmit = document.getElementById('pwSubmit');
+    const adminTextarea = document.getElementById('adminTextarea');
+    const adminAddBtn = document.getElementById('adminAddBtn');
+    const adminCloseBtn = document.getElementById('adminCloseBtn');
+    const adminStatus = document.getElementById('adminStatus');
+
+    adminToggle.addEventListener('click', () => {
+      modal.style.display = 'flex';
+      pwScreen.style.display = 'block';
+      adminPanel.classList.add('admin-hidden');
+      adminStatus.textContent = '';
+      adminPassInput.value = '';
+      adminPassInput.focus();
+    });
+
+    adminCloseBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+    });
+
+    pwSubmit.addEventListener('click', () => {
+      const pw = adminPassInput.value || "";
+      if (pw === ADMIN_PASS) {
+        pwScreen.style.display = 'none';
+        adminPanel.classList.remove('admin-hidden');
+        adminStatus.textContent = "Bạn đã đăng nhập.";
+      } else {
+        adminStatus.textContent = "Mật khẩu sai.";
+        adminPassInput.focus();
+      }
+    });
+
+    adminAddBtn.addEventListener('click', async () => {
+  const raw = adminTextarea.value.trim();
+  if (!raw) {
+    adminStatus.textContent = "Vui lòng nhập ít nhất 1 proxy.";
+    return;
+  }
+  const lines = raw.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+
+  // Chuẩn hoá thành mảng object { type, addr }
+  const items = lines.map(l => {
+    if (l.includes(',')) {
+      const [t,a] = l.split(',').map(s=>s.trim());
+      return { type: t.toLowerCase(), addr: a };
+    } else {
+      return { type: 'http', addr: l };
+    }
+  });
+
+  adminStatus.textContent = "Đang gửi...";
+  try {
+    const resp = await fetch(SHEETDB_API, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ data: items })   // <-- Quan trọng: bọc trong {data:[]}
+    });
+    const json = await resp.json();
+    console.log("SheetDB response:", json);
+
+    if (json && json.created) {
+      adminStatus.textContent = "Thêm thành công " + json.created + " dòng.";
+    } else {
+      adminStatus.textContent = "Đã thêm vào sheet (kiểm tra Google Sheet).";
+    }
+
+    fetchList();  // refresh list sau khi thêm
+  } catch (err) {
+    adminStatus.textContent = "Lỗi: " + err.message;
+  }
+});
+
+    // Khởi động
+    fetchList();
+  </script>
+
+</body>
+</html>
