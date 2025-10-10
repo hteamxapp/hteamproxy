@@ -11,21 +11,20 @@
       --panel: #051005;
     }
     body {
-  background: var(--bg);
-  color: var(--neon);
-  font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 24px;
-  text-align: center;   /* thêm dòng này */
-}
-
-h1 {
-  display: inline-block;
-  padding: 12px 18px;
-  border: 2px solid var(--neon);
-  border-radius: 8px;
-  margin: 0 auto;       /* thêm dòng này */
-}
+      background: var(--bg);
+      color: var(--neon);
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 24px;
+      text-align: center;
+    }
+    h1 {
+      display: inline-block;
+      padding: 12px 18px;
+      border: 2px solid var(--neon);
+      border-radius: 8px;
+      margin: 0 auto;
+    }
     .controls {
       margin-top: 18px;
       display: flex;
@@ -116,38 +115,15 @@ h1 {
       cursor: pointer;
     }
     .admin-hidden { display: none; }
-/* Responsive cho điện thoại */
-@media (max-width: 600px) {
-  .controls {
-    flex-direction: column;    
-    align-items: stretch;      
-  }
-
-  .controls label {
-    width: 100%;
-    display: block;
-    margin-bottom: 6px;
-  }
-
-  .controls label input,
-  .controls label select {
-    width: 100%;
-    margin-top: 4px;
-  }
-
-  .controls button {
-    width: 100%;
-    margin-top: 8px;
-  }
-
-  textarea {
-    height: 200px;
-  }
-
-  h1 {
-    font-size: 20px;
-  }
-}
+    @media (max-width: 600px) {
+      .controls { flex-direction: column; align-items: stretch; }
+      .controls label { width: 100%; display: block; margin-bottom: 6px; }
+      .controls label input,
+      .controls label select { width: 100%; margin-top: 4px; }
+      .controls button { width: 100%; margin-top: 8px; }
+      textarea { height: 200px; }
+      h1 { font-size: 20px; }
+    }
   </style>
 </head>
 <body>
@@ -214,19 +190,20 @@ h1 {
       out.value = msg + "\n\n" + out.value;
     }
 
+    // lấy danh sách từ SheetDB
     async function fetchList() {
       try {
-  await fetch(SHEETDB_API, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ data: items }),
-    mode: "no-cors"
-  });
-  adminStatus.textContent = "Đã thêm vào sheet (kiểm tra Google Sheet).";
-  fetchList(); // refresh list
-} catch (err) {
-  adminStatus.textContent = "Lỗi: " + err.message;
-}
+        const res = await fetch(SHEETDB_API);
+        const data = await res.json();
+        proxies = data.map(row => ({
+          type: row.type ? row.type.toLowerCase() : "http",
+          addr: row.addr
+        }));
+        showMessage("Đã tải danh sách proxy: " + proxies.length + " dòng.");
+      } catch (err) {
+        showMessage("Lỗi tải danh sách: " + err.message);
+      }
+    }
 
     function filterByType(list, cls) {
       if (cls === 'any') return list;
@@ -253,8 +230,7 @@ h1 {
       }
       lastPicked = sample(filtered, qty);
       const lines = lastPicked.map(p => p.type + "," + p.addr);
-      const out = document.getElementById('output');
-      out.value = lines.join("\n") + "\n\n" + out.value;
+      document.getElementById('output').value = lines.join("\n") + "\n\n" + document.getElementById('output').value;
     });
 
     document.getElementById('checkBtn').addEventListener('click', async () => {
@@ -320,62 +296,48 @@ h1 {
     });
 
     pwSubmit.addEventListener('click', () => {
-      const pw = adminPassInput.value || "";
-      if (pw === ADMIN_PASS) {
+      if (adminPassInput.value === ADMIN_PASS) {
         pwScreen.style.display = 'none';
         adminPanel.classList.remove('admin-hidden');
         adminStatus.textContent = "Bạn đã đăng nhập.";
       } else {
         adminStatus.textContent = "Mật khẩu sai.";
-        adminPassInput.focus();
       }
     });
 
     adminAddBtn.addEventListener('click', async () => {
-  const raw = adminTextarea.value.trim();
-  if (!raw) {
-    adminStatus.textContent = "Vui lòng nhập ít nhất 1 proxy.";
-    return;
-  }
-  const lines = raw.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+      const raw = adminTextarea.value.trim();
+      if (!raw) {
+        adminStatus.textContent = "Vui lòng nhập ít nhất 1 proxy.";
+        return;
+      }
+      const lines = raw.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+      const items = lines.map(l => {
+        if (l.includes(',')) {
+          const [t,a] = l.split(',').map(s=>s.trim());
+          return { type: t.toLowerCase(), addr: a };
+        } else {
+          return { type: 'http', addr: l };
+        }
+      });
 
-  // Chuẩn hoá thành mảng object { type, addr }
-  const items = lines.map(l => {
-    if (l.includes(',')) {
-      const [t,a] = l.split(',').map(s=>s.trim());
-      return { type: t.toLowerCase(), addr: a };
-    } else {
-      return { type: 'http', addr: l };
-    }
-  });
-
-  adminStatus.textContent = "Đang gửi...";
-  try {
-    const resp = await fetch(SHEETDB_API, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ data: items })   // <-- Quan trọng: bọc trong {data:[]}
+      adminStatus.textContent = "Đang gửi...";
+      try {
+        await fetch(SHEETDB_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ data: items }),
+          mode: "no-cors"
+        });
+        adminStatus.textContent = "Đã thêm vào sheet (kiểm tra Google Sheet).";
+        fetchList();
+      } catch (err) {
+        adminStatus.textContent = "Lỗi: " + err.message;
+      }
     });
-    const json = await resp.json();
-    console.log("SheetDB response:", json);
-
-    if (json && json.created) {
-      adminStatus.textContent = "Thêm thành công " + json.created + " dòng.";
-    } else {
-      adminStatus.textContent = "Đã thêm vào sheet (kiểm tra Google Sheet).";
-    }
-
-    fetchList();  // refresh list sau khi thêm
-  } catch (err) {
-    adminStatus.textContent = "Lỗi: " + err.message;
-  }
-});
 
     // Khởi động
     fetchList();
   </script>
-
 </body>
 </html>
