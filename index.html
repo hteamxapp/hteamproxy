@@ -118,24 +118,33 @@ h1 {
 /* Responsive cho điện thoại */
 @media (max-width: 600px) {
   .controls {
-    flex-direction: column;    /* xếp dọc thay vì ngang */
-    align-items: stretch;      /* cho chiếm hết chiều ngang */
+    flex-direction: column;    
+    align-items: stretch;      
   }
 
-  .controls label,
-  .controls button,
-  .controls select,
-  .controls input {
-    width: 100%;               /* mỗi cái chiếm hết chiều ngang */
-    text-align: left;          /* label nhìn gọn */
+  .controls label {
+    width: 100%;
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  .controls label input,
+  .controls label select {
+    width: 100%;
+    margin-top: 4px;
+  }
+
+  .controls button {
+    width: 100%;
+    margin-top: 8px;
   }
 
   textarea {
-    height: 200px;             /* giảm chiều cao một chút cho vừa màn nhỏ */
+    height: 200px;
   }
 
   h1 {
-    font-size: 20px;           /* nhỏ lại để vừa điện thoại */
+    font-size: 20px;
   }
 }
   </style>
@@ -370,4 +379,4 @@ h1 {
   </script>
 
 </body>
-  </html>
+</html>
