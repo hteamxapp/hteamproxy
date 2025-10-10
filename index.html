@@ -216,19 +216,17 @@ h1 {
 
     async function fetchList() {
       try {
-        const res = await fetch(SHEETDB_API);
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        const data = await res.json();
-        proxies = data.map(row => ({
-          type: row.type ? row.type.toLowerCase() : "http",
-          addr: row.addr
-        }));
-        showMessage("Đã tải danh sách proxy: " + proxies.length + " dòng.");
-      } catch (err) {
-        showMessage("Lỗi tải danh sách: " + err.message);
-        proxies = [];
-      }
-    }
+  await fetch(SHEETDB_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ data: items }),
+    mode: "no-cors"
+  });
+  adminStatus.textContent = "Đã thêm vào sheet (kiểm tra Google Sheet).";
+  fetchList(); // refresh list
+} catch (err) {
+  adminStatus.textContent = "Lỗi: " + err.message;
+}
 
     function filterByType(list, cls) {
       if (cls === 'any') return list;
