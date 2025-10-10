@@ -115,6 +115,29 @@ h1 {
       cursor: pointer;
     }
     .admin-hidden { display: none; }
+/* Responsive cho điện thoại */
+@media (max-width: 600px) {
+  .controls {
+    flex-direction: column;    /* xếp dọc thay vì ngang */
+    align-items: stretch;      /* cho chiếm hết chiều ngang */
+  }
+
+  .controls label,
+  .controls button,
+  .controls select,
+  .controls input {
+    width: 100%;               /* mỗi cái chiếm hết chiều ngang */
+    text-align: left;          /* label nhìn gọn */
+  }
+
+  textarea {
+    height: 200px;             /* giảm chiều cao một chút cho vừa màn nhỏ */
+  }
+
+  h1 {
+    font-size: 20px;           /* nhỏ lại để vừa điện thoại */
+  }
+}
   </style>
 </head>
 <body>
@@ -347,4 +370,4 @@ h1 {
   </script>
 
 </body>
-</html>
+  </html>
