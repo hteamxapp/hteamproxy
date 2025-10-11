@@ -124,9 +124,52 @@
       textarea { height: 200px; }
       h1 { font-size: 20px; }
     }
+@keyframes blink {
+  50% { opacity: 0.5; }
+}
+.scanning {
+  animation: blink 1s infinite;
+}
   </style>
 </head>
 <body>
+
+<!-- Popup thông báo -->
+  <div id="noticePopup" style="
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: #000;
+    border: 2px solid #28ff28;
+    border-radius: 12px;
+    box-shadow: 0 0 20px #28ff28;
+    padding: 24px 30px 50px 30px;
+    width: 80%;
+    max-width: 400px;
+    text-align: center;
+    color: #fff;
+    font-size: 18px;
+    z-index: 10000;
+  ">
+    <div id="noticeText" style="color: #ffb; font-weight: bold;">
+      <p>Thông báo 💁</p>
+      <p>App Scan Proxy Free By HTeam</p>
+      <p>Không sử dụng cho bất kì hành vi phạm pháp nào,mọi hành vi vi phạm pháp luật chúng tôi sẽ không chịu trách nhiệm liên đới.Tool free nên proxy là dạng public.Mọi vấn đề thắc mắc vui lòng liên hệ👇</p>
+       <p>Facebook: viethung2002tienhai</p>
+       <p>Zalo: 03.87.67.5932</p>
+    </div>
+    <button id="closeNotice" style="
+      position: absolute;
+      bottom: 12px; right: 16px;
+      background: #28ff28;
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-weight: bold;
+    ">X</button>
+  </div>
 
   <h1>HTEAM PROXY</h1>
 
@@ -221,17 +264,41 @@
     }
 
     document.getElementById('scanBtn').addEventListener('click', () => {
-      const qty = parseInt(document.getElementById('quantity').value) || 1;
-      const cls = document.getElementById('classify').value;
-      const filtered = filterByType(proxies, cls);
-      if (filtered.length === 0) {
-        showMessage("Không tìm thấy proxy loại " + cls);
-        return;
-      }
-      lastPicked = sample(filtered, qty);
-      const lines = lastPicked.map(p => p.type + "," + p.addr);
-      document.getElementById('output').value = lines.join("\n") + "\n\n" + document.getElementById('output').value;
-    });
+  const qty = parseInt(document.getElementById('quantity').value) || 1;
+  const cls = document.getElementById('classify').value;
+  const out = document.getElementById('output');
+
+  // Hiện thông báo đang scan (nhấp nháy)
+  out.value = "🔍 Đang scan dữ liệu proxy...\n\n";
+  out.classList.add('scanning');
+
+  // Vô hiệu hóa nút SCAN để tránh bấm liên tục
+  const btn = document.getElementById('scanBtn');
+  btn.disabled = true;
+
+  // Sau 3 giây hiển thị kết quả
+  setTimeout(() => {
+    const filtered = filterByType(proxies, cls);
+
+    // Nếu không có proxy phù hợp
+    if (filtered.length === 0) {
+      out.classList.remove('scanning');
+      out.value = "❌ Không tìm thấy proxy loại " + cls;
+      btn.disabled = false;
+      return;
+    }
+
+    // Chọn ngẫu nhiên proxy
+    lastPicked = sample(filtered, qty);
+    const lines = lastPicked.map(p => p.type + "," + p.addr);
+
+    // Dừng hiệu ứng nhấp nháy, hiển thị thông báo hoàn tất
+    out.classList.remove('scanning');
+    out.value = "✅ Đã scan được proxy!\n\n" + lines.join("\n") + "\n\n" + out.value;
+
+    btn.disabled = false;
+  }, 3000); // Delay 3 giây
+});
 
     document.getElementById('checkBtn').addEventListener('click', async () => {
       if (!lastPicked.length) {
@@ -337,7 +404,42 @@
 });
 
     // Khởi động
+    // Khi bấm X, đóng bảng thông báo và khởi động chương trình
+  document.getElementById('closeNotice').addEventListener('click', () => {
+    document.getElementById('noticePopup').style.display = 'none';
+    // Bắt đầu chạy chương trình sau khi người dùng đóng thông báo
     fetchList();
+  });
+
+  // Ban đầu: ẩn toàn bộ các phần khác cho đến khi đóng thông báo
+  window.addEventListener('load', () => {
+    document.querySelector('h1').style.opacity = '0.3';
+    document.querySelector('.controls').style.pointerEvents = 'none';
+    document.querySelector('.controls').style.opacity = '0.3';
+    document.getElementById('output').style.opacity = '0.3';
+  });
+
+  // Khi đóng thông báo, bật lại giao diện
+  document.getElementById('closeNotice').addEventListener('click', () => {
+    document.querySelector('h1').style.opacity = '1';
+    document.querySelector('.controls').style.pointerEvents = 'auto';
+    document.querySelector('.controls').style.opacity = '1';
+    document.getElementById('output').style.opacity = '1';
+  });
   </script>
+<!-- Footer giới thiệu -->
+  <footer style="
+    margin-top: 40px;
+    padding-top: 10px;
+    border-top: 1px solid var(--neon);
+    color: #ccc;
+    font-size: 14px;
+    text-align: center;
+    line-height: 1.6;
+  ">
+    <div>Version: 2.0</div>
+    <div>Admin: HTeam Nguyễn Việt Hùng</div>
+    <div>Fb: viethung2002tienhai</div>
+  </footer>
 </body>
 </html>
