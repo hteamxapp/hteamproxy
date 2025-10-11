@@ -306,35 +306,35 @@
     });
 
     adminAddBtn.addEventListener('click', async () => {
-      const raw = adminTextarea.value.trim();
-      if (!raw) {
-        adminStatus.textContent = "Vui lòng nhập ít nhất 1 proxy.";
-        return;
-      }
-      const lines = raw.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
-      const items = lines.map(l => {
-        if (l.includes(',')) {
-          const [t,a] = l.split(',').map(s=>s.trim());
-          return { type: t.toLowerCase(), addr: a };
-        } else {
-          return { type: 'http', addr: l };
-        }
-      });
+  const raw = adminTextarea.value.trim();
+  if (!raw) {
+    adminStatus.textContent = "Vui lòng nhập ít nhất 1 proxy.";
+    return;
+  }
+  const lines = raw.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  const items = lines.map(l => {
+    if (l.includes(',')) {
+      const [t,a] = l.split(',').map(s=>s.trim());
+      return { type: t.toLowerCase(), addr: a };
+    } else {
+      return { type: 'http', addr: l };
+    }
+  });
 
-      adminStatus.textContent = "Đang gửi...";
-      try {
-        await fetch(SHEETDB_API, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data: items }),
-          mode: "cors"
-        });
-        adminStatus.textContent = "Đã thêm vào sheet (kiểm tra Google Sheet).";
-        fetchList();
-      } catch (err) {
-        adminStatus.textContent = "Lỗi: " + err.message;
-      }
+  adminStatus.textContent = "Đang gửi...";
+  try {
+    const res = await fetch(SHEETDB_API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ data: items }),
     });
+    const result = await res.json();
+    adminStatus.textContent = "Đã thêm " + items.length + " proxy vào sheet.";
+    fetchList();
+  } catch (err) {
+    adminStatus.textContent = "Lỗi: " + err.message;
+  }
+});
 
     // Khởi động
     fetchList();
