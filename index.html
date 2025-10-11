@@ -327,7 +327,7 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ data: items }),
-          mode: "no-cors"
+          mode: "cors"
         });
         adminStatus.textContent = "Đã thêm vào sheet (kiểm tra Google Sheet).";
         fetchList();
